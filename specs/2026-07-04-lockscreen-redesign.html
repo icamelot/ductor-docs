@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock Screen Redesign — Apple-Style Unlock UI</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --text: #1a1a2e;
+  --text-secondary: #555;
+  --border: #e0e0e0;
+  --sidebar-bg: #fafafa;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+  --blockquote-border: #4a9eff;
+  --link-color: #2563eb;
+  --link-hover: #1d4ed8;
+  --accent: #4a9eff;
+  --topbar-height: 48px;
+  --sidebar-width: 260px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Lock Screen ──────────────────────────────── */
+
+#lock-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.lock-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  padding: 48px 40px 36px;
+  width: 380px;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.lock-icon { margin-bottom: 16px; }
+
+.lock-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.lock-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+.lock-card input[type="password"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 12px;
+  background: #fff;
+}
+
+.lock-card input[type="password"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74,158,255,0.15);
+}
+
+.unlock-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.unlock-btn:hover { background: var(--link-hover); }
+.unlock-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.lock-error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 12px;
+  display: none;
+}
+
+.lock-footer {
+  margin-top: 20px;
+  font-size: 0.75rem;
+  color: #999;
+  line-height: 1.5;
+}
+
+/* ── Top Bar ──────────────────────────────────── */
+
+#top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--topbar-height);
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  z-index: 100;
+}
+
+#top-bar .top-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  margin-right: 8px;
+  border-radius: 4px;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.hamburger:hover { background: #f0f0f0; }
+.hamburger svg { display: block; }
+
+/* ── Sidebar ──────────────────────────────────── */
+
+#sidebar {
+  position: fixed;
+  top: var(--topbar-height);
+  left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--topbar-height));
+  overflow-y: auto;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  z-index: 90;
+}
+
+#sidebar .toc-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999;
+  padding: 0 20px 12px;
+}
+
+#toc-list { list-style: none; }
+#toc-list li { margin: 0; }
+
+.toc-link {
+  display: block;
+  padding: 6px 20px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.toc-link:hover {
+  color: var(--text);
+  background: rgba(0,0,0,0.03);
+}
+
+.toc-link.active {
+  color: var(--link-color);
+  border-left-color: var(--link-color);
+  font-weight: 600;
+  background: rgba(37,99,235,0.06);
+}
+
+.toc-link.level-h3 {
+  padding-left: 36px;
+  font-size: 0.825rem;
+}
+
+.toc-empty {
+  padding: 12px 20px;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+/* ── Content Area ─────────────────────────────── */
+
+#content-area {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--topbar-height);
+  padding: 40px 56px;
+}
+
+#content { max-width: none; }
+
+/* Typography */
+
+#content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+  line-height: 1.3;
+}
+
+#content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 32px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.3;
+}
+
+#content h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 24px 0 8px;
+  line-height: 1.4;
+}
+
+#content p {
+  margin: 0 0 16px;
+  font-size: 1rem;
+}
+
+#content a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+#content a:hover { text-decoration: underline; }
+
+#content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 16px 0;
+  display: block;
+}
+
+#content hr {
+  border: none;
+  border-top: 2px solid var(--border);
+  margin: 32px 0;
+}
+
+#content strong { font-weight: 700; }
+#content em { font-style: italic; }
+
+/* Code Blocks */
+
+.code-block-wrapper {
+  position: relative;
+  margin: 16px 0;
+}
+
+.code-block-wrapper pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: 8px;
+  padding: 16px 48px 16px 20px;
+  overflow-x: auto;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.copy-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.85);
+  border-color: rgba(255,255,255,0.25);
+}
+
+.copy-btn:active {
+  transform: scale(0.95);
+}
+
+.copy-btn.copied {
+  background: rgba(34,197,94,0.2);
+  border-color: rgba(34,197,94,0.4);
+  color: #4ade80;
+}
+
+.copy-btn svg {
+  flex-shrink: 0;
+}
+
+#content code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+#content p > code,
+#content li > code {
+  background: #f1f5f9;
+  color: #be123c;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+#content pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Tables */
+
+#content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.95rem;
+  overflow-x: auto;
+  display: block;
+}
+
+#content th,
+#content td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+#content th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+#content tr:nth-child(even) td {
+  background: #f8f9fa;
+}
+
+/* Blockquotes */
+
+#content blockquote {
+  margin: 16px 0;
+  padding: 12px 20px;
+  border-left: 4px solid var(--blockquote-border);
+  background: #f8faff;
+  color: #444;
+}
+
+#content blockquote p:last-child { margin-bottom: 0; }
+
+/* Lists */
+
+#content ul,
+#content ol {
+  margin: 8px 0 16px;
+  padding-left: 24px;
+}
+
+#content li {
+  margin: 4px 0;
+  font-size: 1rem;
+}
+
+#content li > ul,
+#content li > ol {
+  margin: 4px 0;
+}
+
+/* ── Footer ───────────────────────────────────── */
+
+#footer {
+  margin-left: var(--sidebar-width);
+  padding: 24px 56px 40px;
+  border-top: 1px solid var(--border);
+  background: #fafafa;
+}
+
+.footer-info {
+  max-width: none;
+  font-size: 0.8rem;
+  color: #999;
+  line-height: 1.6;
+}
+
+.footer-info span { display: block; }
+
+/* ── Overlay ──────────────────────────────────── */
+
+#overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 80;
+}
+
+#overlay.visible { display: block; }
+
+/* ── Mobile ───────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .hamburger { display: block; }
+
+  #sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 200;
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  #sidebar.open ~ #overlay { display: block; }
+
+  #content-area {
+    margin-left: 0;
+    padding: 20px 16px;
+  }
+
+  #footer {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  #content h1 { font-size: 1.5rem; }
+  #content h2 { font-size: 1.25rem; }
+  #content h3 { font-size: 1.1rem; }
+
+  .lock-card { padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════ Lock Screen ════════════════ -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4a9eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="lock-title">Lock Screen Redesign — Apple-Style Unlock UI</div>
+    <div class="lock-subtitle">此文档已加密，请输入密码</div>
+    <input type="password" id="password-input" placeholder="请输入密码" autofocus autocomplete="off">
+    <button class="unlock-btn" id="unlock-btn">解锁</button>
+    <div class="lock-error" id="lock-error">密码错误或数据损坏</div>
+    <div class="lock-footer">
+      <span>生成时间：2026-07-04 01:27:48 UTC</span>
+      <span>来源：docs/superpowers/specs/2026-07-04-lockscreen-redesign.md</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ App ═══════════════════════ -->
+<div id="app" style="display:none">
+  <div id="top-bar">
+    <button class="hamburger" id="hamburger" aria-label="菜单">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <div class="top-title">Lock Screen Redesign — Apple-Style Unlock UI</div>
+  </div>
+
+  <div id="sidebar">
+    <div class="toc-header">目录</div>
+    <ul id="toc-list"></ul>
+  </div>
+
+  <div id="content-area">
+    <div id="content"></div>
+  </div>
+
+  <div id="footer">
+    <div class="footer-info">
+      <span>生成时间：2026-07-04 01:27:48 UTC</span>
+      <span>来源：docs/superpowers/specs/2026-07-04-lockscreen-redesign.md</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ Overlay ═══════════════════ -->
+<div id="overlay"></div>
+
+<!-- ════════════════ JavaScript ═════════════════ -->
+<script>
+'use strict';
+
+/* ─── Template Placeholders ──────────────────── */
+
+var ENCRYPTED_CONTENT = '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';
+var NONCE             = 'MF423R9t2U7f1lr3';
+var SALT              = 'mIV28AwK2PAXPsxzTJz5aQ==';
+var TOC_DATA          = [{"id": "goal", "text": "Goal", "level": "h2"}, {"id": "current-state", "text": "Current State", "level": "h2"}, {"id": "design-decisions", "text": "Design Decisions", "level": "h2"}, {"id": "visual-layout", "text": "Visual Layout", "level": "h2"}, {"id": "icon-states-animation", "text": "Icon States & Animation", "level": "h2"}, {"id": "default-lock", "text": "Default — Lock", "level": "h3"}, {"id": "loading-wobble", "text": "Loading — Wobble", "level": "h3"}, {"id": "success-crossfade-to-checkmark", "text": "Success — Crossfade to Checkmark", "level": "h3"}, {"id": "error-shake", "text": "Error — Shake", "level": "h3"}, {"id": "button-interactions", "text": "Button Interactions", "level": "h2"}, {"id": "states", "text": "States", "level": "h3"}, {"id": "spinner", "text": "Spinner", "level": "h3"}, {"id": "input-field", "text": "Input Field", "level": "h2"}, {"id": "card-entrance-animation", "text": "Card Entrance Animation", "level": "h2"}, {"id": "error-message", "text": "Error Message", "level": "h2"}, {"id": "implementation-notes", "text": "Implementation Notes", "level": "h2"}, {"id": "files-changed", "text": "Files Changed", "level": "h2"}, {"id": "out-of-scope", "text": "Out of Scope", "level": "h2"}];
+
+/* ─── Helpers ────────────────────────────────── */
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+}
+
+function slugify(text) {
+  return text.toLowerCase()
+    .replace(/[^\w一-鿿぀-ゟ゠-ヿ가-힯]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function base64ToBytes(b64) {
+  var binary = atob(b64);
+  var bytes  = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/* ─── Inline Processor ───────────────────────── */
+
+function processInline(text) {
+  var s = text.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
+
+  s = s.replace(/`([^`]+)`/g,         '<code>$1</code>');
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,  '<a href="$2">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g,   '<strong>$1</strong>');
+  s = s.replace(/\*([^*]+)\*/g,       '<em>$1</em>');
+  return s;
+}
+
+/* ─── Block-level Processors ─────────────────── */
+
+function processTable(lines) {
+  var headerCells = lines[0].split('|').filter(function(c){ return c.trim(); }).map(function(c){ return processInline(c.trim()); });
+  var rows        = lines.slice(2);
+  var html        = '<table><thead><tr>';
+
+  for (var hi = 0; hi < headerCells.length; hi++) html += '<th>' + headerCells[hi] + '</th>';
+  html += '</tr></thead><tbody>';
+
+  for (var ri = 0; ri < rows.length; ri++) {
+    if (!rows[ri].trim()) continue;
+    var cells = rows[ri].split('|').filter(function(c){ return c.trim(); }).map(function(c){ return processInline(c.trim()); });
+    if (cells.length === 0) continue;
+    html += '<tr>';
+    for (var ci = 0; ci < cells.length; ci++) html += '<td>' + cells[ci] + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function processList(lines) {
+  var html        = '';
+  var currentType = null;
+
+  for (var i = 0; i < lines.length; i++) {
+    var line     = lines[i];
+    var ulMatch  = line.match(/^(\s*)[-*+]\s+(.*)/);
+    var olMatch  = line.match(/^(\s*)\d+\.\s+(.*)/);
+
+    if (ulMatch) {
+      if (currentType !== 'ul') {
+        if (currentType) html += '</' + currentType + '>';
+        html += '<ul>';
+        currentType = 'ul';
+      }
+      html += '<li>' + processInline(ulMatch[2]) + '</li>';
+    } else if (olMatch) {
+      if (currentType !== 'ol') {
+        if (currentType) html += '</' + currentType + '>';
+        html += '<ol>';
+        currentType = 'ol';
+      }
+      html += '<li>' + processInline(olMatch[2]) + '</li>';
+    }
+  }
+  if (currentType) html += '</' + currentType + '>';
+  return html;
+}
+
+/* ─── Main Markdown Renderer ─────────────────── */
+
+function markdownToHtml(md) {
+  /* ---- Phase 1: extract fenced code blocks ---- */
+  var codeBlocks = [];
+  var text = md.replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+    var id = '%%CODE_' + codeBlocks.length + '%%';
+    codeBlocks.push(
+      '<div class="code-block-wrapper">' +
+      '<pre><code' +
+      (lang ? ' class="language-' + lang + '"' : '') +
+      '>' + escapeHtml(code.trim()) + '</code></pre>' +
+      '<button class="copy-btn" title="复制代码">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+      '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+      '</svg>' +
+      '<span>复制</span>' +
+      '</button>' +
+      '</div>'
+    );
+    return id;
+  });
+
+  var lines = text.split('\n');
+  var html  = '';
+  var i     = 0;
+
+  function getCodeBlock(id) {
+    var idx = parseInt(id.replace('%%CODE_', '').replace('%%', ''), 10);
+    return codeBlocks[idx] || '';
+  }
+
+  /* ---- Phase 2: line-by-line processing ------ */
+  while (i < lines.length) {
+    var line     = lines[i];
+    var trimmed  = line.trim();
+
+    if (trimmed === '') { i++; continue; }
+
+    /* -- code block placeholder -- */
+    if (/^%%CODE_\d+%%$/.test(trimmed)) {
+      html += getCodeBlock(trimmed) + '\n';
+      i++;
+      continue;
+    }
+
+    /* -- heading -- */
+    if (/^#{1,3}\s/.test(line)) {
+      var hLevel  = line.match(/^#+/)[0].length;
+      var hText   = line.replace(/^#+\s*/, '');
+      html += '<h' + hLevel + ' id="' + slugify(hText) + '">' +
+              processInline(hText) + '</h' + hLevel + '>\n';
+      i++;
+      continue;
+    }
+
+    /* -- horizontal rule -- */
+    if (/^---+$/.test(trimmed)) {
+      html += '<hr>\n';
+      i++;
+      continue;
+    }
+
+    /* -- blockquote -- */
+    if (/^>\s/.test(trimmed) || trimmed === '>') {
+      var quoteLines = [];
+      while (i < lines.length && /^>/.test(lines[i].trim())) {
+        quoteLines.push(lines[i].trim().replace(/^>\s?/, ''));
+        i++;
+      }
+      html += '<blockquote>' +
+              markdownToHtml(quoteLines.join('\n')) +
+              '</blockquote>\n';
+      continue;
+    }
+
+    /* -- table -- */
+    if (i + 1 < lines.length && line.includes('|')) {
+      var sepLine = lines[i + 1].trim();
+      var pipeCount = (sepLine.match(/\|/g) || []).length;
+      if (pipeCount >= 2 && /-/.test(sepLine)) {
+        var tableLines = [];
+        while (i < lines.length && lines[i].includes('|')) {
+          tableLines.push(lines[i]);
+          i++;
+        }
+        html += processTable(tableLines) + '\n';
+        continue;
+      }
+    }
+
+    /* -- unordered list -- */
+    if (/^\s*[-*+]\s/.test(line)) {
+      var ulLines = [];
+      i = gatherList(ulLines, lines, i);
+      html += processList(ulLines) + '\n';
+      continue;
+    }
+
+    /* -- ordered list -- */
+    if (/^\s*\d+\.\s/.test(line)) {
+      var olLines = [];
+      i = gatherList(olLines, lines, i);
+      html += processList(olLines) + '\n';
+      continue;
+    }
+
+    /* -- paragraph -- */
+    var paraLines = [];
+    while (i < lines.length && lines[i].trim() !== '') {
+      var l = lines[i].trim();
+      if (/^#{1,3}\s/.test(l)) break;
+      if (/^---+$/.test(l)) break;
+      if (/^>\s/.test(l)) break;
+      if (/^%%CODE_\d+%%$/.test(l)) break;
+      if (/^\s*[-*+]\s/.test(l)) break;
+      if (/^\s*\d+\.\s/.test(l)) break;
+      if (l.includes('|') && i + 1 < lines.length) {
+        var np = (lines[i + 1].trim().match(/\|/g) || []).length;
+        if (np >= 2 && /-/.test(lines[i + 1].trim())) break;
+      }
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length > 0) {
+      html += '<p>' + processInline(paraLines.join(' ')) + '</p>\n';
+    }
+  }
+
+  return html;
+}
+
+function gatherList(accum, lines, start) {
+  var i = start;
+  while (i < lines.length && lines[i].trim() !== '') {
+    var l = lines[i].trim();
+    if (/^#{1,3}\s/.test(l)) break;
+    if (/^---+$/.test(l)) break;
+    if (/^>\s/.test(l)) break;
+    if (/^%%CODE_\d+%%$/.test(l)) break;
+    if (l.includes('|') && i + 1 < lines.length) {
+      var np = (lines[i + 1].trim().match(/\|/g) || []).length;
+      if (np >= 2 && /-/.test(lines[i + 1].trim())) break;
+    }
+    if (!/^\s*[-*+]\s/.test(l) && !/^\s*\d+\.\s/.test(l) && l !== '') break;
+    accum.push(lines[i]);
+    i++;
+  }
+  return i;
+}
+
+/* ─── TOC Builder ────────────────────────────── */
+
+function buildTOC(tocData) {
+  var list = document.getElementById('toc-list');
+  list.innerHTML = '';
+
+  if (!tocData || tocData.length === 0) {
+    var empty = document.createElement('li');
+    empty.className = 'toc-empty';
+    empty.textContent = '无目录';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (var i = 0; i < tocData.length; i++) {
+    var item = tocData[i];
+    var li = document.createElement('li');
+    var a  = document.createElement('a');
+    a.href     = '#' + item.id;
+    a.className = 'toc-link';
+    if (item.level === 'h3') a.classList.add('level-h3');
+    a.textContent = item.text;
+    li.appendChild(a);
+    list.appendChild(li);
+  }
+}
+
+/* ─── Decryption ─────────────────────────────── */
+
+async function decryptContent(encryptedBase64, nonceBase64, saltBase64, password) {
+  var encrypted = base64ToBytes(encryptedBase64);
+  var nonce     = base64ToBytes(nonceBase64);
+  var salt      = base64ToBytes(saltBase64);
+
+  var keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  var key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  var plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: nonce },
+    key,
+    encrypted
+  );
+
+  return new TextDecoder().decode(plaintext);
+}
+
+/* ─── Scroll Spy ─────────────────────────────── */
+
+function setupScrollSpy() {
+  var headings = document.querySelectorAll('#content h1, #content h2, #content h3');
+  if (headings.length === 0) return;
+  var links = document.querySelectorAll('.toc-link');
+
+  function update() {
+    var currentId = '';
+    var scrollPos = window.scrollY + 100;
+    for (var h = 0; h < headings.length; h++) {
+      if (headings[h].offsetTop <= scrollPos) {
+        currentId = headings[h].id;
+      }
+    }
+    for (var l = 0; l < links.length; l++) {
+      var href = links[l].getAttribute('href');
+      if (href === '#' + currentId) {
+        links[l].classList.add('active');
+      } else {
+        links[l].classList.remove('active');
+      }
+    }
+  }
+
+  var ticking = false;
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      window.requestAnimationFrame(function() {
+        update();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+
+  setTimeout(update, 100);
+}
+
+/* ─── Render ─────────────────────────────────── */
+
+function renderApp(mdContent) {
+  var contentDiv = document.getElementById('content');
+  contentDiv.innerHTML = markdownToHtml(mdContent);
+
+  buildTOC(TOC_DATA);
+
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app').style.display = '';
+
+  setupScrollSpy();
+  setupCopyButtons();
+}
+
+/* ─── Copy Button Handler ──────────────────────── */
+
+function setupCopyButtons() {
+  var contentDiv = document.getElementById('content');
+  contentDiv.addEventListener('click', function(e) {
+    var btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+
+    var wrapper = btn.closest('.code-block-wrapper');
+    if (!wrapper) return;
+
+    var code = wrapper.querySelector('code');
+    if (!code) return;
+
+    var text = code.textContent;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        showCopied(btn);
+      }).catch(function() {
+        fallbackCopy(text, btn);
+      });
+    } else {
+      fallbackCopy(text, btn);
+    }
+  });
+}
+
+function fallbackCopy(text, btn) {
+  var textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    showCopied(btn);
+  } catch (e) {
+    /* silently fail */
+  }
+  document.body.removeChild(textarea);
+}
+
+function showCopied(btn) {
+  var span = btn.querySelector('span');
+  var origText = span.textContent;
+  span.textContent = '已复制';
+  btn.classList.add('copied');
+  setTimeout(function() {
+    span.textContent = origText;
+    btn.classList.remove('copied');
+  }, 2000);
+}
+
+/* ─── DOM Ready ──────────────────────────────── */
+
+document.addEventListener('DOMContentLoaded', function() {
+  var passwordInput = document.getElementById('password-input');
+  var unlockBtn     = document.getElementById('unlock-btn');
+  var lockError     = document.getElementById('lock-error');
+  var hamburger     = document.getElementById('hamburger');
+  var sidebar       = document.getElementById('sidebar');
+  var overlay       = document.getElementById('overlay');
+
+  /* ---- sessionStorage cache check ---- */
+  var cachedValid   = sessionStorage.getItem('doc-key-valid');
+  var cachedContent = sessionStorage.getItem('doc-content');
+  if (cachedValid === 'true' && cachedContent) {
+    renderApp(cachedContent);
+    return;
+  }
+
+  /* ---- unlock handler ---- */
+  async function handleUnlock() {
+    var password = passwordInput.value;
+    if (!password) {
+      lockError.textContent = '请输入密码';
+      lockError.style.display = 'block';
+      return;
+    }
+
+    unlockBtn.disabled    = true;
+    unlockBtn.textContent = '解密中...';
+    lockError.style.display = 'none';
+
+    try {
+      if (!ENCRYPTED_CONTENT || !NONCE || !SALT) {
+        throw new Error('加密数据缺失');
+      }
+      var plaintext = await decryptContent(ENCRYPTED_CONTENT, NONCE, SALT, password);
+
+      try {
+        sessionStorage.setItem('doc-key-valid', 'true');
+        sessionStorage.setItem('doc-content', plaintext);
+      } catch (e) { /* storage full — ignore */ }
+
+      renderApp(plaintext);
+    } catch (e) {
+      lockError.textContent = '密码错误或数据损坏';
+      lockError.style.display = 'block';
+      unlockBtn.disabled    = false;
+      unlockBtn.textContent = '解锁';
+      passwordInput.value   = '';
+      passwordInput.focus();
+    }
+  }
+
+  unlockBtn.addEventListener('click', handleUnlock);
+  passwordInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleUnlock();
+  });
+
+  /* ---- hamburger menu ---- */
+  hamburger.addEventListener('click', function() {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('visible');
+  });
+
+  overlay.addEventListener('click', function() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+  });
+
+  passwordInput.focus();
+});
+</script>
+</body>
+</html>
